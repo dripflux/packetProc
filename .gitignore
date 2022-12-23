@@ -1,0 +1,20 @@
+#!/usr/bin/env less
+
+# Temporary files
+**/*~
+**/~$*
+**/*.tmp
+**/tmp/
+
+# Cacheing
+**/__pycache__/
+**/.vscode/
+
+# Mid-compilation, Byte-code
+**/*.[ao]
+**/*.pyc
+
+# Operating/File System Artifacts
+**/.DS_Store
+**/Thumbs.db*
+**/*:Zone.Identifier
