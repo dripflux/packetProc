@@ -190,9 +190,31 @@ kismetCaptureHints () {
 	#   1+ : ERROR
 
 	# Set up working set
-	:
+	captureArgStr=''
 	# Core Actions
+	# Derive Kismet capture args based on hints
 	:
+	# Call common Kismet with capture arg string
+	kismetCommonCapture "${captureArgStr}"
+}
+
+kismetCommonCapture () {
+	# Description: Call Kismet using common configuration capturing onn ${1} (capture string).
+	#  An empty capture string (no argument), will start Kismet without capturing on an interface.
+	# Arguments:
+	#   ${1} : Complete capture string
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	baseArgStr='--no-ncurses'
+	captureArgStr="${1}"
+	shift
+	# Core actions
+	commonArgStr="${baseArgStr}"
+	kismetFullArgs="${commonArgStr} ${captureArgStr}"
+	kismet ${kismetFullArgs} &
 }
 
 cleanUpArtifacts () {
