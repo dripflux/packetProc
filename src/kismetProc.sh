@@ -36,6 +36,8 @@
 # Save script name
 SELF="${0}"
 
+source usbNICmap.sh
+
 main () {
 	# Description: Main control flow
 	# Arguments:
@@ -60,6 +62,9 @@ main () {
 			;;
 		info )       # (base subcommand) Display configuration and version information
 			displayInfo
+			;;
+		cap )  # Capture based on interface hints...
+			kismetCaptureHints "${@}"
 			;;
 		* )
 			# Default: Blank or unknown subcommand, report error if unknown subcommand
@@ -174,6 +179,20 @@ displayInfo () {
 	:
 	# Core actions
 	kismet --version
+}
+
+kismetCaptureHints () {
+	# Description: Use Kismet to capture based on interface hints
+	# Arguments:
+	#   ${1}+ : Interface hints
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	:
+	# Core Actions
+	:
 }
 
 cleanUpArtifacts () {
