@@ -4,10 +4,12 @@
 #	kismetProc.sh  Common Kismet use cases
 #
 # SYNOPSIS
-#	kismetProc.sh help
+#	kismetProc.sh help [search_term]
 #	kismetProc.sh info
 #
-#	kismetProc.sh ...
+#	kismetProc.sh cap [interface_hints]...
+#
+#	kismetProc.sh shutdown
 #
 # DESCRIPTION
 #	...
@@ -65,6 +67,8 @@ main () {
 			;;
 		cap )  # Capture based on interface hints...
 			kismetCaptureHints "${@}"
+			;;
+		shutdown )  # Gracefully shutdown Kismet
 			;;
 		* )
 			# Default: Blank or unknown subcommand, report error if unknown subcommand
@@ -193,9 +197,51 @@ kismetCaptureHints () {
 	captureArgStr=''
 	# Core Actions
 	# Derive Kismet capture args based on hints
-	:
+	captureArgStr=$( buildCaptureArgStrFromInterfaceHints "${@}" )
 	# Call common Kismet with capture arg string
 	kismetCommonCapture "${captureArgStr}"
+}
+
+buildCaptureArgStrFromInterfaceHints () {
+	# Description: Build Kismet capture arguments string based on interface hints
+	# Arguments:
+	#   ${@} : Interface hints
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	wholeCaptureArgStr=''
+	# Core actions
+	for hint in "${@}" ; do
+		partArgStr=$( deriveCaptureArgStrFromHint "${hint}" )
+		if [[ -n "${partArgStr}" ]] ; then
+			wholeCaptureArgStr="${wholeCaptureArgStr} ${partArgStr}"
+		fi
+	done
+	echo ${wholeCaptureArgStr}
+}
+
+deriveCaptureArgStrFromHint () {
+	# Description: Derive Kismet capture argument string based on interface hint.
+	# (future) Pass unknown hint unaltered as command line argument.
+	# Argument:
+	#   ${1} : Hint
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	hint="${1}"
+	shift
+	derivedArgStr="${hint}"
+	# Core actions
+	nicMACaddr=${nicMACaddrMap[x_${hint}]}
+	if [[ -n "${nicMACaddr}" ]] ; then
+		argSuffix=${kismetMap[x_${hint}]}
+		derivedArgStr="-c ${usbPrefix}${nicMACaddr}${argSuffix}"
+	fi
+	echo ${derivedArgStr}
 }
 
 kismetCommonCapture () {
@@ -208,7 +254,7 @@ kismetCommonCapture () {
 	#   1+ : ERROR
 
 	# Set up working set
-	baseArgStr='--no-ncurses'
+	baseArgStr='--no-ncurses -s'
 	captureArgStr="${1}"
 	shift
 	# Core actions
