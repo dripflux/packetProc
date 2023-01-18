@@ -224,7 +224,7 @@ buildCaptureArgStrFromInterfaceHints () {
 
 deriveCaptureArgStrFromHint () {
 	# Description: Derive Kismet capture argument string based on interface hint.
-	# (future) Pass unknown hint unaltered as command line argument.
+	# Pass unknown hint unaltered as command line argument.
 	# Argument:
 	#   ${1} : Hint
 	# Return:
@@ -236,12 +236,12 @@ deriveCaptureArgStrFromHint () {
 	shift
 	derivedArgStr="${hint}"
 	# Core actions
-	nicMACaddr=${nicMACaddrMap[x_${hint}]}
+	nicMACaddr=$( echo ${nicMACaddrMap[x_${hint}]} )  # Subprocess try hack
 	if [[ -n "${nicMACaddr}" ]] ; then
 		argSuffix=${kismetMap[x_${hint}]}
 		derivedArgStr="-c ${usbPrefix}${nicMACaddr}${argSuffix}"
 	fi
-	echo ${derivedArgStr}
+	echo "${derivedArgStr}"
 }
 
 kismetCommonCapture () {
