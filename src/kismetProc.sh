@@ -65,10 +65,11 @@ main () {
 		info )       # (base subcommand) Display configuration and version information
 			displayInfo
 			;;
-		cap )  # Capture based on interface hints...
+		cap )       # Capture based on interface hints...
 			kismetCaptureHints "${@}"
 			;;
 		shutdown )  # Gracefully shutdown Kismet
+			kismetShutdown
 			;;
 		* )
 			# Default: Blank or unknown subcommand, report error if unknown subcommand
@@ -236,7 +237,8 @@ deriveCaptureArgStrFromHint () {
 	shift
 	derivedArgStr="${hint}"
 	# Core actions
-	nicMACaddr=$( echo ${nicMACaddrMap[x_${hint}]} )  # Subprocess try hack
+	# Subprocess try hack
+	nicMACaddr=$( echo ${nicMACaddrMap[x_${hint}]} )
 	if [[ -n "${nicMACaddr}" ]] ; then
 		argSuffix=${kismetMap[x_${hint}]}
 		derivedArgStr="-c ${usbPrefix}${nicMACaddr}${argSuffix}"
@@ -261,6 +263,20 @@ kismetCommonCapture () {
 	commonArgStr="${baseArgStr}"
 	kismetFullArgs="${commonArgStr} ${captureArgStr}"
 	kismet ${kismetFullArgs} &
+}
+
+kismetShutdown () {
+	# Description: Shutdown Kismet processes
+	# Arguments:
+	#   (none)
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	:
+	# Core actions
+	killall -q -SIGINT kismet
 }
 
 cleanUpArtifacts () {
