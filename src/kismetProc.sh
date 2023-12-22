@@ -68,6 +68,9 @@ main () {
 		cap )       # Capture based on interface hints...
 			kismetCaptureHints "${@}"
 			;;
+		pcap )   # Stream packets from Kismet, store as batch pcapngs
+			kismetPacketStream "${@}"
+			;;
 		shutdown )  # Gracefully shutdown Kismet
 			kismetShutdown
 			;;
@@ -263,6 +266,68 @@ kismetCommonCapture () {
 	commonArgStr="${baseArgStr}"
 	kismetFullArgs="${commonArgStr} ${captureArgStr}"
 	kismet ${kismetFullArgs} &
+}
+
+kismetPacketStream () {
+	# Description: ...
+	# Arguments:
+	#   ${1} : ...
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	:
+	# Core actions
+	getPacketStream &
+	binStreamToPCAPNG &
+}
+
+extractKismetCreds () {
+	# Desciription: Extract Kismet Web API credentials
+	# Arguments:
+	#   (none)
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	credentialsFile="${HOME}/.kismet/kismet_httpd.conf"
+	# Core actions
+	kismetUsername=$( cat "${credentialsFile}" | grep httpd_username | cut -d '=' -f 2 )
+	kismetPassword=$( cat "${credentialsFile}" | grep httpd_password | cut -d '=' -f 2 )
+}
+
+getPacketStream () {
+	# Description: ...
+	# Arguments:
+	#   (none)
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	protocol='http'
+	server='localhost:2501'
+	endpoint='pcap/all_packets.pcapng'
+	# Core actions
+	extractKismetCreds
+	credentials="${kismetUsername}:${kismetPassword}"
+	wget "${protocol}://${credentials}@${server}/${endpoint}" -O "${HOME}/.pipes/packets"
+}
+
+binStreamToPCAPNG () {
+	# Description: ...
+	# Arguments:
+	#   ...
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	:
+	# Core actions
+	tshark -i "${HOME}/.pipes/packets" -b duration:600 -w kismet-
 }
 
 kismetShutdown () {
