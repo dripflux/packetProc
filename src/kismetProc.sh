@@ -1,44 +1,48 @@
 #!/usr/bin/env bash
 
-# NAME
-#	kismetProc.sh  Common Kismet use cases
-#
-# SYNOPSIS
-#	kismetProc.sh help [search_term]
-#	kismetProc.sh info
-#
-#	kismetProc.sh cap [interface_hints]...
-#
-#	kismetProc.sh shutdown
-#
-# DESCRIPTION
-#	...
-#
-#	Subcommands:
-#
-#	help  (base subcommand) Display help message, supports single term filtering.
-#
-#	ls, list  (base subcommand) Display non-base subcommands.
-#
-#   info  (base subcommand) Display config and version information.
-#
-# EXIT STATUS
-#	0  : (normal) On success
-#	1+ : ERROR
-#	2  : ERROR: Invalid usage
-#
-# DEPENDENCIES
-#	basename(1) : POSIX basename
-#	echo(0|1)   : Builtin or POSIX echo
-#	egrep(1)    : POSIX egrep
-#	grep(1)     : POSIX grep
-#	less(1)     : GNU (common UNIX) less
-#	tr(1)       : POSIX tr
+
+## NAME
+##	kismetProc.sh  Common Kismet use cases
+##
+## SYNOPSIS
+##	kismetProc.sh help [search_term]
+##	kismetProc.sh info
+##
+##	kismetProc.sh cap [interface_hints]...
+##
+##	kismetProc.sh shutdown
+##
+## DESCRIPTION
+##	...
+##
+##	Subcommands:
+##
+##	help  (base subcommand) Display help message, supports single term filtering.
+##
+##	ls, list  (base subcommand) Display non-base subcommands.
+##
+##	manual  (base subcommand) Display this manual.
+##
+## EXIT STATUS
+##	0  : (normal) On success
+##	1+ : ERROR
+##	2  : ERROR: Invalid usage
+##
+## DEPENDENCIES
+##	basename(1) : POSIX basename
+##	echo(0|1)   : Builtin or POSIX echo
+##	egrep(1)    : POSIX egrep
+##	grep(1)     : POSIX grep
+##	less(1)     : GNU (common UNIX) less
+##	tr(1)       : POSIX tr
+
 
 # Save script name
 SELF="${0}"
 
+# Source required libraries
 source usbNICmap.sh
+
 
 main () {
 	# Description: Main control flow
@@ -51,7 +55,7 @@ main () {
 	# Set up working set
 	subcommand="${1}"
 	shift
-	setUpEnv
+	set_up_environment
 	# Core actions
 	case ${subcommand} in
 		help )       # (base subcommand) Display this help message, supports single term filtering
@@ -60,30 +64,34 @@ main () {
 			usage "${searchTerm}"
 			;;
 		ls | list )  # (base subcommand) List non-base subcommands
-			listNonBaseSubcommands
+			list_non_base_subcommands
+			;;
+		manual )     # (base subcommand) Display full manual
+			manual
 			;;
 		info )       # (base subcommand) Display configuration and version information
-			displayInfo
+			display_info
 			;;
 		cap )       # Capture based on interface hints...
 			kismetCaptureHints "${@}"
 			;;
-		pcap )   # Stream packets from Kismet, store as batch pcapngs
+		pcap )      # Stream packets from Kismet, store as batch pcapngs
 			kismetPacketStream "${@}"
 			;;
 		shutdown )  # Gracefully shutdown Kismet
-			kismetShutdown
+			shutdown_kismet
 			;;
 		* )
 			# Default: Blank or unknown subcommand, report error if unknown subcommand
 			# Note: Lack of comment on same line as case, default action will not be displayed by usage or ls subcommand
 			usage
 			if [[ -n "${subcommand}" ]] ; then
-				errorExit "ERROR: Unknown subcommand: ${subcommand}" 2
+				exit_error "ERROR: Unknown subcommand: ${subcommand}" 2
 			fi
 			;;
 	esac
 }
+
 
 usage () {
 	# Description: Generate and display usage
@@ -104,7 +112,23 @@ usage () {
 	) | grep "${searchTerm:-.}" | less
 }
 
-errorExit () {
+
+manual () {
+	# Description: Display full manual
+	# Arguments:
+	#   (none)
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	:
+	# Core actions
+	grep [\#][\#] "${SELF}" | less
+}
+
+
+error_exit () {
 	# Description: Output ${1} (error message) to stderr and exit with ${2} (error status).
 	# Arguments:
 	#   ${1} : Error message to write
@@ -122,11 +146,12 @@ errorExit () {
 	if [[ -n "${1}" ]] ; then
 		errorStatus="${1}"
 	fi
-	cleanUpArtifacts
+	clean_up_artifacts
 	exit "${errorStatus}"
 }
 
-warningReport () {
+
+report_warning () {
 	# Description: Output ${1} (warning message) to stderr, but DO NOT exit.
 	# Arguments:
 	#   ${1} : Warning message to write
@@ -141,7 +166,7 @@ warningReport () {
 	echo "${warningMessage}" >&2
 }
 
-listNonBaseSubcommands () {
+list_non_base_subcommands () {
 	# Description: Generate and display list of non-base subcommands
 	# References: Albing, C., JP Vossen. bash Idioms. O'Reilly. 2022.
 	# Arguments:
@@ -159,7 +184,7 @@ listNonBaseSubcommands () {
 	) | grep -v 'base[ ]subcommand' | less
 }
 
-setUpEnv () {
+set_up_environment () {
 	# Description: Set up environment
 	# Arguments:
 	#   (none)
@@ -175,7 +200,7 @@ setUpEnv () {
 	fi
 }
 
-displayInfo () {
+display_info () {
 	# Description: Display configuration and version information
 	# Arguments:
 	#   (none)
@@ -189,7 +214,7 @@ displayInfo () {
 	kismet --version
 }
 
-kismetCaptureHints () {
+kismet_capture_hints () {
 	# Description: Use Kismet to capture based on interface hints
 	# Arguments:
 	#   ${1}+ : Interface hints
@@ -330,7 +355,7 @@ binStreamToPCAPNG () {
 	tshark -i "${HOME}/.pipes/packets" -b duration:600 -w kismet-
 }
 
-kismetShutdown () {
+shutdown_kismet () {
 	# Description: Shutdown Kismet processes
 	# Arguments:
 	#   (none)
@@ -344,7 +369,7 @@ kismetShutdown () {
 	killall -q -SIGINT kismet
 }
 
-cleanUpArtifacts () {
+clean_up_artifacts () {
 	# Description: Clean up artifacts from actions
 	# Arguments:
 	#   (none)
@@ -355,10 +380,10 @@ cleanUpArtifacts () {
 	# Set up working set
 	:
 	# Core actions
-	removeTempFiles
+	remove_temporary_files
 }
 
-removeTempFiles () {
+remove_temporary_files () {
 	# Description: Remove temporary files from filesystem
 	# Arguments:
 	#   (none)
