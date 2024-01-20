@@ -23,6 +23,14 @@
 ##
 ##	manual  (base subcommand) Display this manual.
 ##
+## 	...
+##
+## SCHEMAS:
+##	...
+##
+##	usbNICmap.sh  ...
+##		...
+##
 ## EXIT STATUS
 ##	0  : (normal) On success
 ##	1+ : ERROR
@@ -30,11 +38,16 @@
 ##
 ## DEPENDENCIES
 ##	basename(1) : POSIX basename
+##	cat(1)      : POSIX cat
+##	cut(1)      : POSIX cut
 ##	echo(0|1)   : Builtin or POSIX echo
 ##	egrep(1)    : POSIX egrep
 ##	grep(1)     : POSIX grep
+##	kismet(1)   : https://www.kismetwireless.net/
 ##	less(1)     : GNU (common UNIX) less
 ##	tr(1)       : POSIX tr
+##	tshark(1)   : https://tshark.dev/
+##	wget(1)     : GNU (common UNIX) wget
 
 
 # Save script name
@@ -72,18 +85,21 @@ main () {
 		info )       # (base subcommand) Display configuration and version information
 			display_info
 			;;
-		cap )       # Capture based on interface hints...
-			kismetCaptureHints "${@}"
+		cap )       # Use Kismet to capture based on source (interface) hints...
+			capture_kismet_source_hints "${@}"
 			;;
 		pcap )      # Stream packets from Kismet, store as batch pcapngs
-			kismetPacketStream "${@}"
+			stream_kismet_pcap "${@}"
 			;;
 		shutdown )  # Gracefully shutdown Kismet
 			shutdown_kismet
 			;;
+		trim )      # [FUTURE] Delete empty (no packets) Kismet DBs
+			:
+			;;
 		* )
 			# Default: Blank or unknown subcommand, report error if unknown subcommand
-			# Note: Lack of comment on same line as case, default action will not be displayed by usage or ls subcommand
+			# Note: Lack of comment on same line as case, default action will not be displayed by usage or list subcommand
 			usage
 			if [[ -n "${subcommand}" ]] ; then
 				exit_error "ERROR: Unknown subcommand: ${subcommand}" 2
@@ -214,8 +230,8 @@ display_info () {
 	kismet --version
 }
 
-kismet_capture_hints () {
-	# Description: Use Kismet to capture based on interface hints
+capture_kismet_source_hints () {
+	# Description: Use Kismet to capture based on source (interface) hints
 	# Arguments:
 	#   ${1}+ : Interface hints
 	# Return:
@@ -226,12 +242,12 @@ kismet_capture_hints () {
 	captureArgStr=''
 	# Core Actions
 	# Derive Kismet capture args based on hints
-	captureArgStr=$( buildCaptureArgStrFromInterfaceHints "${@}" )
+	captureArgStr=$( build_capture_arg_str_from_interface_hints "${@}" )
 	# Call common Kismet with capture arg string
-	kismetCommonCapture "${captureArgStr}"
+	kismet_common_capture "${captureArgStr}"
 }
 
-buildCaptureArgStrFromInterfaceHints () {
+build_capture_arg_str_from_interface_hints () {
 	# Description: Build Kismet capture arguments string based on interface hints
 	# Arguments:
 	#   ${@} : Interface hints
@@ -243,7 +259,7 @@ buildCaptureArgStrFromInterfaceHints () {
 	wholeCaptureArgStr=''
 	# Core actions
 	for hint in "${@}" ; do
-		partArgStr=$( deriveCaptureArgStrFromHint "${hint}" )
+		partArgStr=$( derive_capture_arg_str_from_hint "${hint}" )
 		if [[ -n "${partArgStr}" ]] ; then
 			wholeCaptureArgStr="${wholeCaptureArgStr} ${partArgStr}"
 		fi
@@ -251,7 +267,7 @@ buildCaptureArgStrFromInterfaceHints () {
 	echo ${wholeCaptureArgStr}
 }
 
-deriveCaptureArgStrFromHint () {
+derive_capture_arg_str_from_hint () {
 	# Description: Derive Kismet capture argument string based on interface hint.
 	# Pass unknown hint unaltered as command line argument.
 	# Argument:
@@ -274,8 +290,8 @@ deriveCaptureArgStrFromHint () {
 	echo "${derivedArgStr}"
 }
 
-kismetCommonCapture () {
-	# Description: Call Kismet using common configuration capturing onn ${1} (capture string).
+kismet_common_capture () {
+	# Description: Call Kismet using common configuration capturing on ${1} (capture string).
 	#  An empty capture string (no argument), will start Kismet without capturing on an interface.
 	# Arguments:
 	#   ${1} : Complete capture string
@@ -293,7 +309,7 @@ kismetCommonCapture () {
 	kismet ${kismetFullArgs} &
 }
 
-kismetPacketStream () {
+stream_kismet_pcap () {
 	# Description: ...
 	# Arguments:
 	#   ${1} : ...
@@ -304,12 +320,12 @@ kismetPacketStream () {
 	# Set up working set
 	:
 	# Core actions
-	getPacketStream &
-	binStreamToPCAPNG &
+	get_packet_stream &
+	convert_packet_stream_to_ring_buffer_pcapng &
 }
 
-extractKismetCreds () {
-	# Desciription: Extract Kismet Web API credentials
+extract_kismet_creds () {
+	# Desciription: Extract Kismet Web API credentials from kismet_httpd.conf
 	# Arguments:
 	#   (none)
 	# Return:
@@ -323,7 +339,7 @@ extractKismetCreds () {
 	kismetPassword=$( cat "${credentialsFile}" | grep httpd_password | cut -d '=' -f 2 )
 }
 
-getPacketStream () {
+get_packet_stream () {
 	# Description: ...
 	# Arguments:
 	#   (none)
@@ -336,12 +352,12 @@ getPacketStream () {
 	server='localhost:2501'
 	endpoint='pcap/all_packets.pcapng'
 	# Core actions
-	extractKismetCreds
+	extract_kismet_creds
 	credentials="${kismetUsername}:${kismetPassword}"
 	wget "${protocol}://${credentials}@${server}/${endpoint}" -O "${HOME}/.pipes/packets"
 }
 
-binStreamToPCAPNG () {
+convert_packet_stream_to_ring_buffer_pcapng () {
 	# Description: ...
 	# Arguments:
 	#   ...
@@ -356,7 +372,7 @@ binStreamToPCAPNG () {
 }
 
 shutdown_kismet () {
-	# Description: Shutdown Kismet processes
+	# Description: Gracefuly shutdown Kismet processes
 	# Arguments:
 	#   (none)
 	# Return:
