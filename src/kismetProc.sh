@@ -140,7 +140,7 @@ manual () {
 	# Set up working set
 	:
 	# Core actions
-	grep [\#][\#] "${SELF}" | less
+	grep '[#][#]' "${SELF}" | less
 }
 
 
