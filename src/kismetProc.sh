@@ -144,7 +144,7 @@ manual () {
 }
 
 
-error_exit () {
+exit_error () {
 	# Description: Output ${1} (error message) to stderr and exit with ${2} (error status).
 	# Arguments:
 	#   ${1} : Error message to write
