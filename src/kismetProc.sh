@@ -368,7 +368,7 @@ convert_packet_stream_to_ring_buffer_pcapng () {
 	# Set up working set
 	:
 	# Core actions
-	tshark -i "${HOME}/.pipes/packets" -b duration:600 -w kismet-
+	tshark -i "${HOME}/.pipes/packets" -b duration:900 -w kismet-
 }
 
 shutdown_kismet () {
