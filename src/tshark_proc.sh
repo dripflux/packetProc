@@ -38,12 +38,13 @@
 ##	2  : ERROR: Invalid usage
 ##
 ## DEPENDENCIES
-##	echo(0|1)   : Built-in or POSIX echo
-##	egrep(1)    : POSIX egrep
-##	grep(1)     : POSIX grep
-##	less(1)     : GNU (common UNIX) less
+##	echo(0|1)   : Built-in or POSIX echo.
+##	egrep(1)    : POSIX egrep.
+##	find(1)     : POSIX find.
+##	grep(1)     : POSIX grep.
+##	less(1)     : GNU (common UNIX) less.
 ##	sort(1)     : POSIX sort.
-##	tr(1)       : POSIX tr
+##	tr(1)       : POSIX tr.
 
 
 # Save script name
@@ -80,6 +81,19 @@ main () {
 			;;
 		version )    # (base subcommand) Display version information.
 			version_info
+			;;
+		wps-csv )  # Extract select WPS fields from ${2} (PCAP).
+			sourcePCAP="${1}"
+			shift
+			extract_wps_from_pcap "${sourcePCAP}"
+			;;
+		wps-csv-bulk )  # Recursively, from cwd or ${2} (directory), bulk extract select WPS fields from PCAPs
+			startDirectory="${1}"
+			shift
+			if [[ -z "${startDirectory}" ]] ; then
+				startDirectory=$( pwd )
+			fi
+			bulk_extract_wps_from_pcap "${startDirectory}"
 			;;
 		* )
 			# Default: Blank or unknown subcommand, report error if unknown subcommand
@@ -310,6 +324,106 @@ list_non_base_subcommands () {
 		echo "${SELF##*/}" 'Subcommands:'
 		egrep '[[:space:]]\)[[:space:]]+#[[:space:]]' "${SELF}" | grep -v 'base[[:space:]]subcommand' | tr -s '\t' | sort
 	) | less
+	report_debug "${SELF##*/}::${FUNCNAME[1]}() <-- ${FUNCNAME[0]}()"
+}
+
+
+bulk_extract_wps_from_pcap () {
+	# Description: Recursively, from cwd, extract PCAPNG from Kismet DB.
+	# Arguments:
+	#   (none)
+	# Return:
+	#  0  : (normal)
+	#  1+ : ERROR
+
+	# Set up working set
+	report_telemetry "${FUNCNAME[0]}()"
+	report_debug "${SELF##*/}::${FUNCNAME[0]}(${*})"
+	startDirectory="${1}"
+	shift
+	tempPCAPfileListing="$( mktemp )"
+	declare -a PCAPs
+	# Core actions
+	populate_PCAPs_in_directory_tree_into_file "${startDirectory}" "${tempPCAPfileListing}"
+	mapfile -t PCAPs < "${tempPCAPfileListing}"
+	for pcap in "${PCAPs[@]}" ; do
+		extract_wps_from_pcap "${pcap}"
+	done
+	rm -f "${tempPCAPfileListing}"
+	report_debug "${SELF##*/}::${FUNCNAME[1]}() <-- ${FUNCNAME[0]}()"
+}
+
+
+populate_PCAPs_in_directory_tree_into_file () {
+	# Description: ...
+	# Arguments:
+	#   ${1} : Directory in hierarchy to begin search from
+	#   ${2} : File to store results in
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	report_telemetry "${FUNCNAME[0]}()"
+	report_debug "${SELF##*/}::${FUNCNAME[0]}(${*})"
+	findTreeRoot="${1}"
+	shift
+	destinationFileListing="${1}"
+	shift
+	# Core actions
+	find "${findTreeRoot}" -iname '*.pcap??' | sort > "${destinationFileListing}"
+	report_debug "${SELF##*/}::${FUNCNAME[1]}() <-- ${FUNCNAME[0]}()"
+}
+
+
+extract_wps_from_pcap () {
+	# Description: Extract select WPS fields from ${1} (PCAP).
+	# Arguments:
+	#   ${1} : Source pcap to extract from.
+	# Return:
+	#   0  : (normal)
+	#   1+ : ERROR
+
+	# Set up working set
+	report_telemetry "${FUNCNAME[0]}()"
+	report_debug "${SELF##*/}::${FUNCNAME[0]}(${*})"
+	sourcePCAPfullPath="${1}"
+	shift
+	displayFilter='(wlan.tag.number == 221) and (wlan.tag.oui == 20722) and (wlan.tag.vendor.oui.type == 4)'
+	# Core actions
+	# Derive filenames
+	tempCSVfile=$( mktemp )
+	targetDirectoryPath="${sourcePCAPfullPath%/*}"
+	if [[ "${targetDirectoryPath}" = "${sourcePCAPfullPath}" ]] ; then
+		targetDirectoryPath='.'
+	fi
+	sourcePCAP="${sourcePCAPfullPath##*/}"
+	fileSlug="${sourcePCAP%.pcap??}"
+	destinationCSV="${targetDirectoryPath}/${fileSlug}-wps_fields.csv"
+	report_information "Processing: ${sourcePCAPfullPath}"
+	# Tshark for PCAP processing, trim all empty fields
+	tshark -r "${sourcePCAPfullPath}" \
+		-Y "${displayFilter}" \
+		-T fields \
+		-E header=y \
+		-E separator=, \
+		-E quote=d \
+		-e wlan.sa \
+		-e wps.mac_address \
+		-e wps.manufacturer \
+		-e wps.model_name \
+		-e wps.model_number \
+		-e wps.serial_number \
+		-e wps.device_name \
+		-e wps.uuid_e \
+		-e wps.primary_device_type.category \
+		-e wps.primary_device_type \
+		| grep -v ,,,,,,,,, > "${tempCSVfile}"
+	# Clean raw CSV
+	head -n 1 "${tempCSVfile}" > "${destinationCSV}"
+	tail -n +2 "${tempCSVfile}" | sort | uniq >> "${destinationCSV}"
+	rm -f "${tempCSVfile}"
+	report_complete "Created: ${destinationCSV}"
 	report_debug "${SELF##*/}::${FUNCNAME[1]}() <-- ${FUNCNAME[0]}()"
 }
 
